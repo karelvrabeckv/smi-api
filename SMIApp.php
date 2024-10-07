@@ -237,7 +237,7 @@ class SMIApp extends REST {
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
-		$id = $this->sanitize($this->_request['userid'], 'int');
+		$id = $this->sanitize($this->_request['user_id'], 'int');
 		$date = $this->sanitize($this->_request['date'], 'string');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
@@ -254,12 +254,12 @@ class SMIApp extends REST {
 			$value = 1;
 			//$value = $this->sanitize($this->_request['msgid'], 'int');
 			$stmtDetails = $connect->prepare('SELECT tta.userid as StudentId, tt.start, tt.end, c.name, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate, l.location AS roomNumber, lect.Name as lecturerName, lect.Surname AS lecturerSurname, tta.confirmedAttendance
-												FROM Users u
+												FROM users u
 												JOIN ttableattendance tta ON u.userid = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid
-												JOIN Users lect ON lect.userid = sc.LectID    
+												JOIN users lect ON lect.userid = sc.LectID    
 												JOIN Courses c ON c.CourseID = sc.CourseID
 												JOIN locations l ON l.locationid = tte.locationid
 												WHERE tta.userid = ? AND Datediff(?, tte.ttabledate) = 0 -- 3727 and 2020-03-05 are parameters in the api
@@ -292,7 +292,7 @@ class SMIApp extends REST {
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
-		$id = $this->sanitize($this->_request['userid'], 'int');
+		$id = $this->sanitize($this->_request['user_id'], 'int');
 		$date = $this->sanitize($this->_request['date'], 'string');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
@@ -777,7 +777,7 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.username , u.name, u.surname , tt.start, tt.end, c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM Users u
+												FROM users u
 												JOIN ttableattendance tta ON u.userid = tta.userid               
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid  
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                     
@@ -872,7 +872,7 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.name, u.surname , c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM Users u
+												FROM users u
 												JOIN ttableattendance tta ON u.userid = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
@@ -927,7 +927,7 @@ class SMIApp extends REST {
 			$connect = (new dbConn)->connect('mobileapp');
 			
 			# Read from table		
-			$stmtDetails = $connect->prepare('Select Users.userid, Users.Type From Users where email = ?');	
+			$stmtDetails = $connect->prepare('Select users.userid, users.Type From users where email = ?');	
 							$stmtDetails->bind_param('s',$email);											
 							$stmtDetails->execute();
 							$result = $stmtDetails->get_result();
@@ -1023,6 +1023,35 @@ class SMIApp extends REST {
 		else {
 		        $this->endpoint_error(254);
 				die();
+		}
+	}
+
+	public function getTargetBeacons($params) {
+		$this->secureEndpoint(__FUNCTION__, 'GET', ['ALL'], ['ALL'], false);
+		
+		$scope = 'intranet.user.login.null';
+		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
+		$auth = $this->isAuthorised($scope, $accessToken, false);
+		
+		if ($auth) {
+			$connect = (new dbConn)->connect('mobileapp');
+			
+			$sql = $connect->prepare('SELECT * FROM smi_target_beacon');
+			$sql->execute();
+			$result = $sql->get_result();
+			$sql->close();
+			
+			$data = [];
+			while ($row = $result->fetch_assoc())
+			{
+				$data[] = $row;
+			}
+			
+			echo json_encode($data, JSON_NUMERIC_CHECK);
+		}
+		else {
+			$this->endpoint_error(401);
+			exit();
 		}
 	}
 }
