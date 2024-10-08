@@ -255,11 +255,11 @@ class SMIApp extends REST {
 			//$value = $this->sanitize($this->_request['msgid'], 'int');
 			$stmtDetails = $connect->prepare('SELECT tta.userid as StudentId, tt.start, tt.end, c.name, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate, l.location AS roomNumber, lect.Name as lecturerName, lect.Surname AS lecturerSurname, tta.confirmedAttendance
 												FROM users u
-												JOIN ttableattendance tta ON u.userid = tta.userid              
+												JOIN ttableattendance tta ON u.user_id = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid
-												JOIN users lect ON lect.userid = sc.LectID    
+												JOIN users lect ON lect.user_id = sc.LectID    
 												JOIN Courses c ON c.CourseID = sc.CourseID
 												JOIN locations l ON l.locationid = tte.locationid
 												WHERE tta.userid = ? AND Datediff(?, tte.ttabledate) = 0 -- 3727 and 2020-03-05 are parameters in the api
@@ -778,7 +778,7 @@ class SMIApp extends REST {
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.username , u.name, u.surname , tt.start, tt.end, c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
 												FROM users u
-												JOIN ttableattendance tta ON u.userid = tta.userid               
+												JOIN ttableattendance tta ON u.user_id = tta.userid               
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid  
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                     
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid              
@@ -873,7 +873,7 @@ class SMIApp extends REST {
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.name, u.surname , c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
 												FROM users u
-												JOIN ttableattendance tta ON u.userid = tta.userid              
+												JOIN ttableattendance tta ON u.user_id = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid             
@@ -927,7 +927,7 @@ class SMIApp extends REST {
 			$connect = (new dbConn)->connect('mobileapp');
 			
 			# Read from table		
-			$stmtDetails = $connect->prepare('Select users.userid, users.Type From users where email = ?');	
+			$stmtDetails = $connect->prepare('Select users.user_id, users.Type From users where email = ?');	
 							$stmtDetails->bind_param('s',$email);											
 							$stmtDetails->execute();
 							$result = $stmtDetails->get_result();
@@ -1048,6 +1048,92 @@ class SMIApp extends REST {
 			}
 			
 			echo json_encode($data, JSON_NUMERIC_CHECK);
+		}
+		else {
+			$this->endpoint_error(401);
+			exit();
+		}
+	}
+
+	public function getTargetBeaconByMac($params) {
+		$this->secureEndpoint(__FUNCTION__, 'GET', ['ALL'], ['ALL'], false);
+		
+		$scope = 'intranet.user.login.null';
+		$mac = $this->sanitize($this->_request['mac'], 'string');
+		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
+		$auth = $this->isAuthorised($scope, $accessToken, false);
+		
+		if ($auth) {
+			$connect = (new dbConn)->connect('mobileapp');
+			
+			$sql = $connect->prepare('SELECT * FROM smi_target_beacon WHERE mac = ?');
+			$sql->bind_param('s', $mac);
+			$sql->execute();
+			$result = $sql->get_result();
+			$sql->close();
+
+			$data = [];
+			while ($row = $result->fetch_assoc())
+			{
+				$data[] = $row;
+			}
+			
+			echo json_encode($data, JSON_NUMERIC_CHECK);
+		}
+		else {
+			$this->endpoint_error(401);
+			exit();
+		}
+	}
+
+	public function getClassroomByTargetBeaconId($params) {
+		$this->secureEndpoint(__FUNCTION__, 'GET', ['ALL'], ['ALL'], false);
+		
+		$scope = 'intranet.user.login.null';
+		$targetBeaconId = $this->sanitize($this->_request['target_beacon_id'], 'string');
+		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
+		$auth = $this->isAuthorised($scope, $accessToken, false);
+		
+		if ($auth) {
+			$connect = (new dbConn)->connect('mobileapp');
+			
+			$sql = $connect->prepare('SELECT * FROM smi_target_beacon_to_classroom WHERE target_beacon_id = ?');
+			$sql->bind_param('i', $targetBeaconId);
+			$sql->execute();
+			$result = $sql->get_result();
+			$sql->close();
+
+			$data = [];
+			while ($row = $result->fetch_assoc())
+			{
+				$data[] = $row;
+			}
+			
+			echo json_encode($data, JSON_NUMERIC_CHECK);
+		}
+		else {
+			$this->endpoint_error(401);
+			exit();
+		}
+	}
+
+	public function postAttendance($params) {
+		$this->secureEndpoint(__FUNCTION__, 'GET', ['ALL'], ['ALL'], false);
+		
+		$scope = 'intranet.user.login.null';
+		$studentId = $this->sanitize($this->_request['student_id'], 'string');
+		$classroomId = $this->sanitize($this->_request['classroom_id'], 'string');
+		$dateTime = $this->sanitize($this->_request['date_time'], 'string');
+		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
+		$auth = $this->isAuthorised($scope, $accessToken, false);
+		
+		if ($auth) {
+			$connect = (new dbConn)->connect('mobileapp');
+			
+			$sql = $connect->prepare('INSERT INTO smi_attendance(id, student_id, classroom_id, date_time) VALUES(NULL, ?, ?, ?)');
+			$sql->bind_param('iis', $studentId, $classroomId, $dateTime);
+			$sql->execute();
+			$sql->close();
 		}
 		else {
 			$this->endpoint_error(401);
