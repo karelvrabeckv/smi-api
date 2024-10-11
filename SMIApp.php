@@ -1036,7 +1036,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM smi_target_beacon');
+			$sql = $connect->prepare('SELECT * FROM view_target_beacon');
 			$sql->execute();
 			$result = $sql->get_result();
 			$sql->close();
@@ -1066,7 +1066,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM smi_target_beacon WHERE mac = ?');
+			$sql = $connect->prepare('SELECT * FROM view_target_beacon WHERE mac = ?');
 			$sql->bind_param('s', $mac);
 			$sql->execute();
 			$result = $sql->get_result();
@@ -1097,7 +1097,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM smi_target_beacon_to_classroom WHERE target_beacon_id = ?');
+			$sql = $connect->prepare('SELECT * FROM view_target_beacon_to_classroom WHERE target_beacon_id = ?');
 			$sql->bind_param('i', $targetBeaconId);
 			$sql->execute();
 			$result = $sql->get_result();
