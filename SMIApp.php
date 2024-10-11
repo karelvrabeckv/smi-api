@@ -280,7 +280,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-			$this->endpoint_error(254);
+			$this->endpoint_error(401);
 			die();
 		}		
 	}
@@ -323,7 +323,7 @@ class SMIApp extends REST {
 			echo $response;
 		}
 		else {
-			$this->endpoint_error(254);
+			$this->endpoint_error(401);
 			die();
 		}		
 	}
@@ -373,7 +373,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-			$this->endpoint_error(254);
+			$this->endpoint_error(401);
 			die();
 		}			
 	}	
@@ -427,7 +427,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-			$this->endpoint_error(254);
+			$this->endpoint_error(401);
 			die();
 		}			
 	}	
@@ -537,7 +537,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}		
 	}
@@ -654,7 +654,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}		
 	}
@@ -706,7 +706,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
@@ -750,7 +750,7 @@ class SMIApp extends REST {
 			echo $response;
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
@@ -800,7 +800,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
@@ -842,7 +842,7 @@ class SMIApp extends REST {
 			echo $response;
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
@@ -898,7 +898,7 @@ class SMIApp extends REST {
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
 		else {
-			$this->endpoint_error(254);
+			$this->endpoint_error(401);
 			die();
 		}
 	}
@@ -950,7 +950,7 @@ class SMIApp extends REST {
 				// Stop!
 				if (($useremail != $email) && ($private === true)) {
 					
-					$this->endpoint_error(155);
+					$this->endpoint_error(401);
 					
 				}
 				else {
@@ -963,7 +963,7 @@ class SMIApp extends REST {
 			}
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
@@ -1008,7 +1008,7 @@ class SMIApp extends REST {
 				// Stop!
 				if (($useremail != $email) && ($private === true)) {
 					
-					$this->endpoint_error(155);
+					$this->endpoint_error(401);
 					
 				}
 				else {
@@ -1021,7 +1021,7 @@ class SMIApp extends REST {
 			}
 		}
 		else {
-		        $this->endpoint_error(254);
+		        $this->endpoint_error(401);
 				die();
 		}
 	}
