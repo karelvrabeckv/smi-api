@@ -254,12 +254,12 @@ class SMIApp extends REST {
 			$value = 1;
 			//$value = $this->sanitize($this->_request['msgid'], 'int');
 			$stmtDetails = $connect->prepare('SELECT tta.userid as StudentId, tt.start, tt.end, c.name, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate, l.location AS roomNumber, lect.Name as lecturerName, lect.Surname AS lecturerSurname, tta.confirmedAttendance
-												FROM users u
-												JOIN ttableattendance tta ON u.user_id = tta.userid              
+												FROM user u
+												JOIN ttableattendance tta ON u.id = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid
-												JOIN users lect ON lect.user_id = sc.LectID    
+												JOIN user lect ON lect.id = sc.LectID    
 												JOIN Courses c ON c.CourseID = sc.CourseID
 												JOIN locations l ON l.locationid = tte.locationid
 												WHERE tta.userid = ? AND Datediff(?, tte.ttabledate) = 0 -- 3727 and 2020-03-05 are parameters in the api
@@ -777,8 +777,8 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.username , u.name, u.surname , tt.start, tt.end, c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM users u
-												JOIN ttableattendance tta ON u.user_id = tta.userid               
+												FROM user u
+												JOIN ttableattendance tta ON u.id = tta.userid               
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid  
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                     
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid              
@@ -872,8 +872,8 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.name, u.surname , c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM users u
-												JOIN ttableattendance tta ON u.user_id = tta.userid              
+												FROM user u
+												JOIN ttableattendance tta ON u.id = tta.userid              
 												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
 												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
 												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid             
@@ -903,7 +903,7 @@ class SMIApp extends REST {
 		}
 	}
 	
-	public function getUserTypeDev() {
+	public function getUserByEmailDev() {
 		
 		//Very IMP: Endpoint Security
         $origin = array('ALL');
@@ -927,11 +927,11 @@ class SMIApp extends REST {
 			$connect = (new dbConn)->connect('mobileapp');
 			
 			# Read from table		
-			$stmtDetails = $connect->prepare('Select users.user_id, users.Type From users where email = ?');	
-							$stmtDetails->bind_param('s',$email);											
-							$stmtDetails->execute();
-							$result = $stmtDetails->get_result();
-							$stmtDetails->close();
+			$stmtDetails = $connect->prepare('SELECT u.id, u.type FROM user u WHERE email = ?');	
+			$stmtDetails->bind_param('s',$email);
+			$stmtDetails->execute();
+			$result = $stmtDetails->get_result();
+			$stmtDetails->close();
 							
 			// Create Result Array
 			$emparray = array();
@@ -945,7 +945,7 @@ class SMIApp extends REST {
 			$response = json_encode($emparray, JSON_NUMERIC_CHECK);
 			
 			// if the User's type is not A or L, this URI should only send data pertaining to current user
-			if ((json_decode($response)[0]->Type != 'A') && (json_decode($response)[0]->Type != 'L')) {
+			if ((json_decode($response)[0]->type != 'A') && (json_decode($response)[0]->type != 'L')) {
 				
 				// Stop!
 				if (($useremail != $email) && ($private === true)) {
@@ -968,7 +968,7 @@ class SMIApp extends REST {
 		}
 	}
 	
-	public function getUserType() {
+	public function getUserByEmail() {
 		
 		//Very IMP: Endpoint Security
         $origin = array('ALL');
@@ -1003,7 +1003,7 @@ class SMIApp extends REST {
 			$response = json_encode($emparray, JSON_NUMERIC_CHECK);
 			
 			// if the User's type is not A or L, this URI should only send data pertaining to current user
-			if ((json_decode($response)[0]->Type != 'A') && (json_decode($response)[0]->Type != 'L')) {
+			if ((json_decode($response)[0]->type != 'A') && (json_decode($response)[0]->type != 'L')) {
 				
 				// Stop!
 				if (($useremail != $email) && ($private === true)) {
@@ -1036,7 +1036,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM view_target_beacon');
+			$sql = $connect->prepare('CALL getTargetBeacons()');
 			$sql->execute();
 			$result = $sql->get_result();
 			$sql->close();
@@ -1066,7 +1066,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM view_target_beacon WHERE mac = ?');
+			$sql = $connect->prepare('CALL getTargetBeaconByMac(?)');
 			$sql->bind_param('s', $mac);
 			$sql->execute();
 			$result = $sql->get_result();
@@ -1097,7 +1097,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('SELECT * FROM view_target_beacon_to_classroom WHERE target_beacon_id = ?');
+			$sql = $connect->prepare('CALL getClassroomByTargetBeaconId(?)');
 			$sql->bind_param('i', $targetBeaconId);
 			$sql->execute();
 			$result = $sql->get_result();
@@ -1130,7 +1130,7 @@ class SMIApp extends REST {
 		if ($auth) {
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			$sql = $connect->prepare('INSERT INTO smi_attendance(id, student_id, classroom_id, date_time) VALUES(NULL, ?, ?, ?)');
+			$sql = $connect->prepare('CALL postAttendance(?, ?, ?)');
 			$sql->bind_param('iis', $studentId, $classroomId, $dateTime);
 			$sql->execute();
 			$sql->close();
