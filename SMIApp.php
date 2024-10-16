@@ -65,41 +65,26 @@ class SMIApp extends REST {
 		$connect = (new dbConn)->connect('mobileapp');
 		
 		// Write to Table       
-        $stmt_msg = $connect->prepare('INSERT INTO Notification(message) VALUES(?);');
+        $stmt_msg = $connect->prepare('INSERT INTO smi_notification(message) VALUES(?)');
         $stmt_msg->bind_param('s',$message);
         $stmt_msg->execute();
 		$emailErrorLog .= "DB Statement ERROR STUDENT: ". " " . $stmt_msg->error. "\r\n";
         $emailErrorLog .= "DB Connection ERROR if any: " . $connect->error. "\r\n";
-        $last_message_id = $stmt_msg->insert_id;
         $stmt_msg ->close();
-	
 	}
 	
 	public function readDB($params){
-
 		// Very IMP: Endpoint Security	
         $origin = array('ALL');
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 
-
-        $_DO_ENCRYPT =false;
-		
-        // API Call Data
-        // $message = $this->sanitize($this->_request['theMessage'], 'string');
-        
-		// Prepare Email Debug to send (if need be)
-		$emailErrorLog = "Errors:";
-
-
         // Finally, after all sanitisation, we are ready to connect to the database and save data
 		$connect = (new dbConn)->connect('mobileapp');
 		
-		# Read from table
+		// Read from table
 		$value = 1;
-		//$value = $this->sanitize($this->_request['msgid'], 'int');
-		$stmtDetails = $connect->prepare('SELECT * FROM Notification n
-										  WHERE n.notifyID >= ?');
+		$stmtDetails = $connect->prepare('SELECT * FROM smi_notification n WHERE n.notifyID >= ?');
 						$stmtDetails->bind_param('i', $value);
 						$stmtDetails->execute();
 						$result = $stmtDetails->get_result();
@@ -114,10 +99,6 @@ class SMIApp extends REST {
 						
 		// Convert to JSON and send as response
 		echo json_encode($emparray);
-		
-		# Template Function for Email
-		//goMail($fromMail, $fromName, $toMail, $toName, $subject, $message, $replyMail=FROM_MAIL, $replyName=FROM_NAME, $attach=null, $embed=null, $cc=null){
-				
     }	
 	
 	public function apiTest($params){
@@ -211,23 +192,11 @@ class SMIApp extends REST {
 			$private = true;
 		}		
 		
-		// Who is accessing this function? Determine user from token 					
-		// $url = 'https://api.stmartins.edu/rest/user/getTokenInfoOAuthStyle?access_token=' . $accessToken;
-
 		$fields = array(					
 			"access_token" => $accessToken
 		);
 
-		// $useremail = json_decode($this->curl($url, $fields, 'GET'), false)->message->client_id;
-		
-		// Is token is valid, continue
-		// Note: If this is a private URI, make sure data pertains to this user only
-		if($authorized){
-				return true;
-		}
-		else {
-			return false;
-		}
+		return $authorized;
 	}
 	
 	public function getStudentDayScheduleDev($params){
@@ -251,17 +220,15 @@ class SMIApp extends REST {
 			$connect = (new dbConn)->connect('mobileapp');
 			
 			# Read from table
-			$value = 1;
-			//$value = $this->sanitize($this->_request['msgid'], 'int');
 			$stmtDetails = $connect->prepare('SELECT tta.userid as StudentId, tt.start, tt.end, c.name, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate, l.location AS roomNumber, lect.Name as lecturerName, lect.Surname AS lecturerSurname, tta.confirmedAttendance
-												FROM user u
-												JOIN ttableattendance tta ON u.id = tta.userid              
-												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
-												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
-												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid
-												JOIN user lect ON lect.id = sc.LectID    
-												JOIN Courses c ON c.CourseID = sc.CourseID
-												JOIN locations l ON l.locationid = tte.locationid
+												FROM smi_user u
+												JOIN smi_t_table_attendance tta ON u.id = tta.userid              
+												JOIN smi_t_table_entry tte ON tta.ttableentryid = tte.ttableentryid 
+												JOIN smi_t_table tt ON tt.ttableid = tte.ttableid                    
+												JOIN smi_scheduled_course sc ON sc.SchedID = tt.schedid
+												JOIN smi_user lect ON lect.id = sc.LectID    
+												JOIN smi_course c ON c.CourseID = sc.CourseID
+												JOIN smi_location l ON l.locationid = tte.locationid
 												WHERE tta.userid = ? AND Datediff(?, tte.ttabledate) = 0 -- 3727 and 2020-03-05 are parameters in the api
 												Order by HOUR(tt.start)');
 							$stmtDetails->bind_param('is', $id, $date);
@@ -328,7 +295,7 @@ class SMIApp extends REST {
 		}		
 	}
 	
-	public function getConfirmedAttendanceDev($params){
+	public function getAttendanceByIdLegacyDev($params){
        
         // Very IMP: Endpoint Security
         $origin = array('ALL');
@@ -336,7 +303,7 @@ class SMIApp extends REST {
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 
         // API Call Data
-        $ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
+        $ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
 		// Scope required for this call		
@@ -353,10 +320,7 @@ class SMIApp extends REST {
 			
 			
 			// Does an entry already exist?
-			$stmt_msg = $connect->prepare('SELECT ttableattendance.userid, ttableattendance.confirmedAttendance 
-											FROM ttableattendance 
-											Where ttableentryid = ?
-										   ');
+			$stmt_msg = $connect->prepare('SELECT tta.userid, tta.confirmedAttendance FROM smi_t_table_attendance tta WHERE ttableentryid = ?');
 			$stmt_msg->bind_param('i', $ttableentryid);
 			$stmt_msg->execute();
 			$result = $stmt_msg->get_result();
@@ -378,7 +342,7 @@ class SMIApp extends REST {
 		}			
 	}	
 	
-	public function getConfirmedAttendance($params){
+	public function getAttendanceByIdLegacy($params){
        
         // Very IMP: Endpoint Security
         $origin = array('ALL');
@@ -386,7 +350,7 @@ class SMIApp extends REST {
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 
         // API Call Data
-        $ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
+        $ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
 		// Scope required for this call		
@@ -394,9 +358,6 @@ class SMIApp extends REST {
 		
 		$auth = $this->isAuthorised($scope, $accessToken, false);
 		$auth = true;
-		
-		// Prepare Email Debug to send (if need be)
-		$emailErrorLog = "Errors:";
 
 		if ($auth) {
 			// Finally, after all sanitisation, we are ready to connect to the database and save data
@@ -410,19 +371,6 @@ class SMIApp extends REST {
 			$url = 'https://intranet.stmartins.edu/rest/smimobileapp.php';
 			//var_dump($this->curl($url, $array, 'POST'));
 			$emparray = json_decode($this->curl($url, $array, 'POST'));
-						
-			// Convert to JSON and send as response
-			$response = json_encode($emparray, JSON_NUMERIC_CHECK);				
-											
-			// Filter required data before sending to client
-			//$array = array();
-			//$counter = 0;
-			
-			
-			//foreach ($emparray as $row) {
-				
-			//	array_push($array, array(1, 0));
-			//}
 			
 			echo json_encode($emparray, JSON_NUMERIC_CHECK);
 		}
@@ -432,17 +380,16 @@ class SMIApp extends REST {
 		}			
 	}	
 	
-	public function saveConfirmedAttendanceDev($params){
-       
+	public function postAttendanceLegacyDev($params){
         // Very IMP: Endpoint Security
         $origin = array('ALL');
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
         // API Call Data
-        $userid = $this->sanitize($this->_request['userid'], 'int');
-        $ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
-		$attendanceState = $this->sanitize($this->_request['attendanceState'], 'int');
+        $ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
+        $userid = $this->sanitize($this->_request['user_id'], 'int');
+		$attendanceState = $this->sanitize($this->_request['attendance_state'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
 		// Scope required for this call		
@@ -457,13 +404,8 @@ class SMIApp extends REST {
 			// Finally, after all sanitisation, we are ready to connect to the database and save data
 			$connect = (new dbConn)->connect('mobileapp');
 			
-			
 			// Does an entry already exist?
-			$stmt_msg = $connect->prepare('SELECT * 
-										   FROM ttableattendance
-										   WHERE userid = ?
-										   AND ttableentryid = ?
-										   ');
+			$stmt_msg = $connect->prepare('SELECT * FROM smi_t_table_attendance WHERE userid = ? AND ttableentryid = ?');
 			$stmt_msg->bind_param('ii',$userid, $ttableentryid);
 			$stmt_msg->execute();
 			$result = $stmt_msg->get_result();
@@ -475,17 +417,13 @@ class SMIApp extends REST {
 				$countRows++;
 			}
 			
-			
 			if ($countRows > 0) {
 				
 				// UPDATE
 				
 				if (($attendanceState == 0) || ($attendanceState == 1)) {
 					// Write to Table
-					$stmt_msg = $connect->prepare('UPDATE ttableattendance
-												   SET confirmedAttendance = ?
-												   WHERE  ttableentryid = ?
-												   AND userid = ?');
+					$stmt_msg = $connect->prepare('UPDATE smi_t_table_attendance SET confirmedAttendance = ? WHERE  ttableentryid = ? AND userid = ?');
 					$stmt_msg->bind_param('iii',$attendanceState, $ttableentryid, $userid);
 					$stmt_msg->execute();
 					$emailErrorLog .= "DB Statement ERROR STUDENT: ". " " . $stmt_msg->error. "\r\n";
@@ -512,12 +450,11 @@ class SMIApp extends REST {
 				if (($attendanceState == 0) || ($attendanceState == 1)) {
 					
 					// Write to Table
-					$stmt_msg = $connect->prepare('INSERT INTO ttableattendance(ttableentryid, userid, confirmedAttendance) VALUES(?,?,?);');
+					$stmt_msg = $connect->prepare('INSERT INTO smi_t_table_attendance(ttableentryid, userid, confirmedAttendance) VALUES (?, ?, ?)');
 					$stmt_msg->bind_param('iii',$userid, $ttableentryid, $attendanceState);
 					$stmt_msg->execute();
 					$emailErrorLog .= "DB Statement ERROR STUDENT: ". " " . $stmt_msg->error. "\r\n";
 					$emailErrorLog .= "DB Connection ERROR if any: " . $connect->error. "\r\n";
-					$last_message_id = $stmt_msg->insert_id;
 					$stmt_msg ->close();
 				
 				// Create Result Array
@@ -542,26 +479,23 @@ class SMIApp extends REST {
 		}		
 	}
 			
-	public function saveConfirmedAttendance($params){
-       
+	public function postAttendanceLegacy($params){
         // Very IMP: Endpoint Security
         $origin = array('ALL');
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
         // API Call Data
-        $userid = $this->sanitize($this->_request['userid'], 'int');
-        $ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
-		$attendanceState = $this->sanitize($this->_request['attendanceState'], 'int');
+        $ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
+        $userid = $this->sanitize($this->_request['user_id'], 'int');
+		$attendanceState = $this->sanitize($this->_request['attendance_state'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
-					
+		
 		// Scope required for this call		
 		$scope = 'intranet.user.login.null';		
 		
 		$auth = $this->isAuthorised($scope, $accessToken, false);
 		$auth = true;
-		// Prepare Email Debug to send (if need be)
-		$emailErrorLog = "Errors:";
 
 		if ($auth) {
 			// Finally, after all sanitisation, we are ready to connect to the database and save data
@@ -667,8 +601,8 @@ class SMIApp extends REST {
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
 		// Parameters from HTTP query
+		$userid = $this->sanitize($this->_request['user_id'], 'int');
 		$date = $this->sanitize($this->_request['date'], 'string');
-		$userid = $this->sanitize($this->_request['userid'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 				
 		// Scope required for this call		
@@ -682,12 +616,12 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId, tt.start, tt.end, c.name, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate, l.location AS roomNumber, r.Description AS courseRole
-												FROM ScheduledCourses sc
-												JOIN Courses c ON c.CourseID = sc.CourseID   
-												JOIN ttable tt ON tt.schedid = sc.SchedID
-												JOIN ttableentries tte ON tte.ttableid = tt.ttableid
-												JOIN locations l ON l.locationid = tte.locationid
-												JOIN Roles r ON r.RoleID = sc.RoleID
+												FROM smi_scheduled_course sc
+												JOIN smi_course c ON c.CourseID = sc.CourseID   
+												JOIN smi_t_table tt ON tt.schedid = sc.SchedID
+												JOIN smi_t_table_entry tte ON tte.ttableid = tt.ttableid
+												JOIN smi_location l ON l.locationid = tte.locationid
+												JOIN smi_role r ON r.RoleID = sc.RoleID
 												WHERE Datediff(?, tte.ttabledate) = 0 AND sc.LectID = ?
 												Order by HOUR(tt.start)');	
 							$stmtDetails->bind_param('si',$date, $userid);											
@@ -719,8 +653,8 @@ class SMIApp extends REST {
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
 		// Parameters from HTTP query
+		$userid = $this->sanitize($this->_request['user_id'], 'int');
 		$date = $this->sanitize($this->_request['date'], 'string');
-		$userid = $this->sanitize($this->_request['userid'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
 		// Scope required for this call		
@@ -756,16 +690,15 @@ class SMIApp extends REST {
 	}
 
 	public function getStudentsByCourseDev() {
-		
 		 //Very IMP: Endpoint Security
         $origin = array('ALL');
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
-		// Parameters from HTTP query		
-		$ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
+		// Parameters from HTTP query
+		$ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
-					
+		
 		// Scope required for this call		
 		$scope = 'intranet.user.login.null';		
 		
@@ -777,12 +710,12 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.username , u.name, u.surname , tt.start, tt.end, c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM user u
-												JOIN ttableattendance tta ON u.id = tta.userid               
-												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid  
-												JOIN ttable tt ON tt.ttableid = tte.ttableid                     
-												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid              
-												JOIN Courses c ON c.CourseID = sc.CourseID 
+												FROM smi_user u
+												JOIN smi_t_table_attendance tta ON u.id = tta.userid               
+												JOIN smi_t_table_entry tte ON tta.ttableentryid = tte.ttableentryid  
+												JOIN smi_t_table tt ON tt.ttableid = tte.ttableid                     
+												JOIN smi_scheduled_course sc ON sc.SchedID = tt.schedid              
+												JOIN smi_course c ON c.CourseID = sc.CourseID 
 												WHERE tte.ttableentryid = ?');	
 							$stmtDetails->bind_param('i',$ttableentryid);											
 							$stmtDetails->execute();
@@ -806,14 +739,13 @@ class SMIApp extends REST {
 	}
 	
 	public function getStudentsByCourse() {
-		
-		 //Very IMP: Endpoint Security
+		//Very IMP: Endpoint Security
         $origin = array('ALL');
         $ip = array('ALL');
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
 		// Parameters from HTTP query		
-		$ttableentryid = $this->sanitize($this->_request['ttableentryid'], 'int');
+		$ttableentryid = $this->sanitize($this->_request['t_table_entry_id'], 'int');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
 					
 		// Scope required for this call		
@@ -855,11 +787,11 @@ class SMIApp extends REST {
         $this->secureEndpoint(__FUNCTION__,'GET',$origin,$ip,false);
 		
 		// Parameters from HTTP query		
-		$lectId = $this->sanitize($this->_request['lectId'], 'int');
-		$startDate = $this->sanitize($this->_request['startDate'], 'string');
-		$endDate = $this->sanitize($this->_request['endDate'], 'string');
+		$lectId = $this->sanitize($this->_request['lect_id'], 'int');
+		$startDate = $this->sanitize($this->_request['start_date'], 'string');
+		$endDate = $this->sanitize($this->_request['end_date'], 'string');
 		$accessToken = $this->sanitize($this->_request['access_token'], 'string');
-					
+
 		// Scope required for this call		
 		$scope = 'intranet.user.login.null';		
 		
@@ -872,12 +804,12 @@ class SMIApp extends REST {
 			
 			# Read from table		
 			$stmtDetails = $connect->prepare('SELECT sc.LectID as LecturerId,  tta.userid as StudentId , u.name, u.surname , c.name as coursename, c.description, tte.ttableentryid, tt.ttableid, tte.ttabledate
-												FROM user u
-												JOIN ttableattendance tta ON u.id = tta.userid              
-												JOIN ttableentries tte ON tta.ttableentryid = tte.ttableentryid 
-												JOIN ttable tt ON tt.ttableid = tte.ttableid                    
-												JOIN ScheduledCourses sc ON sc.SchedID = tt.schedid             
-												JOIN Courses c ON c.CourseID = sc.CourseID                      
+												FROM smi_user u
+												JOIN smi_t_table_attendance tta ON u.id = tta.userid              
+												JOIN smi_t_table_entry tte ON tta.ttableentryid = tte.ttableentryid 
+												JOIN smi_t_table tt ON tt.ttableid = tte.ttableid                    
+												JOIN smi_scheduled_course sc ON sc.SchedID = tt.schedid             
+												JOIN smi_course c ON c.CourseID = sc.CourseID                      
 												WHERE sc.LectID = ?  and tte.ttabledate between ? and ?  
 												ORDER BY `tte`.`ttableid`  ASC
 												
@@ -927,7 +859,7 @@ class SMIApp extends REST {
 			$connect = (new dbConn)->connect('mobileapp');
 			
 			# Read from table		
-			$stmtDetails = $connect->prepare('SELECT u.id, u.type FROM user u WHERE email = ?');	
+			$stmtDetails = $connect->prepare('SELECT u.id, u.type FROM smi_user u WHERE email = ?');	
 			$stmtDetails->bind_param('s',$email);
 			$stmtDetails->execute();
 			$result = $stmtDetails->get_result();
@@ -1141,5 +1073,3 @@ class SMIApp extends REST {
 		}
 	}
 }
-
-?>
